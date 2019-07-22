@@ -10,104 +10,75 @@ export class AppComponent implements OnInit {
   title = 'd3-force-layout';
 
   ngOnInit() {
-    const links = [
-      {source: 'Microsoft', target: 'Amazon', type: 'licensing'},
-      {source: 'Microsoft', target: 'HTC', type: 'licensing'},
-      {source: 'Samsung', target: 'Apple', type: 'suit'},
-      {source: 'Motorola', target: 'Apple', type: 'suit'},
-      {source: 'Nokia', target: 'Apple', type: 'resolved'},
-      {source: 'HTC', target: 'Apple', type: 'suit'},
-      {source: 'Kodak', target: 'Apple', type: 'suit'},
-      {source: 'Microsoft', target: 'Barnes & Noble', type: 'suit'},
-      {source: 'Microsoft', target: 'Foxconn', type: 'suit'},
-      {source: 'Oracle', target: 'Google', type: 'suit'},
-      {source: 'Apple', target: 'HTC', type: 'suit'},
-      {source: 'Microsoft', target: 'Inventec', type: 'suit'},
-      {source: 'Samsung', target: 'Kodak', type: 'resolved'},
-      {source: 'LG', target: 'Kodak', type: 'resolved'},
-      {source: 'RIM', target: 'Kodak', type: 'suit'},
-      {source: 'Sony', target: 'LG', type: 'suit'},
-      {source: 'Kodak', target: 'LG', type: 'resolved'},
-      {source: 'Apple', target: 'Nokia', type: 'resolved'},
-      {source: 'Qualcomm', target: 'Nokia', type: 'resolved'},
-      {source: 'Apple', target: 'Motorola', type: 'suit'},
-      {source: 'Microsoft', target: 'Motorola', type: 'suit'},
-      {source: 'Motorola', target: 'Microsoft', type: 'suit'},
-      {source: 'Huawei', target: 'ZTE', type: 'suit'},
-      {source: 'Ericsson', target: 'ZTE', type: 'suit'},
-      {source: 'Kodak', target: 'Samsung', type: 'resolved'},
-      {source: 'Apple', target: 'Samsung', type: 'suit'},
-      {source: 'Kodak', target: 'RIM', type: 'suit'},
-      {source: 'Nokia', target: 'Qualcomm', type: 'suit'}
-    ];
+    const margin = {
+      top: 20,
+      bottom: 50,
+      right: 30,
+      left: 50
+    };
+    const width = 960 - margin.left - margin.right;
+    const height = 700 - margin.top - margin.bottom;
 
-    const nodes = {};
-
-    // Compute the distinct nodes from the links.
-    links.forEach((indLink) => {
-      indLink.source = nodes[indLink.source] || (nodes[indLink.source] = {name: indLink.source});
-      indLink.target = nodes[indLink.target] || (nodes[indLink.target] = {name: indLink.target});
-    });
-
-    const width = 960;
-    const    height = 500;
-
-    const force = d3.layout.force()
-        .nodes(d3.values(nodes))
-        .links(links)
+    // Load Color Scale
+    const c10 = d3.scale.category10();
+    // Create an SVG element and append it to the DOM
+    const svgElement = d3.select('.main')
+      .append('svg').attr({ 'width': width + margin.left + margin.right, 'height': height + margin.top + margin.bottom })
+      .append('g')
+      .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+    // Load External Data
+    d3.json('/assets/GOT_DATA.json',  (dataset) => {
+      // Extract data from dataset
+      const nodes = dataset.nodes;
+      const  links = dataset.links;
+      // Create Force Layout
+      const force = d3.layout.force()
         .size([width, height])
-        .linkDistance(60)
-        .charge(-300)
-        .on('tick', tick)
-        .start();
-
-    const svg = d3.select('.main').append('svg')
-        .attr('width', width)
-        .attr('height', height);
-
-    const link = svg.selectAll('.link')
-        .data(force.links())
-      .enter().append('line')
-      .style('fill', 'red')
-      .style('stroke', '#666');
-
-    const node = svg.selectAll('.node')
-        .data(force.nodes())
-      .enter().append('g')
+        .nodes(nodes)
+        .links(links)
+        .gravity(0.05)
+        .charge(-200)
+        .linkDistance(200);
+      // Add links to SVG
+      const link = svgElement.selectAll('.link')
+        .data(links)
+        .enter()
+        .append('line')
+        .attr('stroke-width', (d) =>  d.weight / 10)
+        .style('stroke', '#ccc');
+      // Add nodes to SVG
+      const node = svgElement.selectAll('.node')
+        .data(nodes)
+        .enter()
+        .append('g')
         .attr('class', 'node')
-        .on('mouseover', mouseover)
-        .on('mouseout', mouseout)
         .call(force.drag);
-
-    node.append('circle')
-        .attr('r', 8);
-
-    node.append('text')
-        .attr('x', 12)
-        .attr('dy', '.35em')
-        .text((d) => d.name);
-
-    function tick() {
-      link
-          .attr('x1', (d) => d.source.x)
-          .attr('y1', (d) => d.source.y)
-          .attr('x2', (d) => d.target.x)
-          .attr('y2', (d) => d.target.y);
-
-      node
-          .attr('transform', (d) => 'translate(' + d.x + ',' + d.y + ')');
-    }
-
-    function mouseover() {
-      d3.select(this).select('circle').transition()
-          .duration(750)
-          .attr('r', 16);
-    }
-
-    function mouseout() {
-      d3.select(this).select('circle').transition()
-          .duration(750)
-          .attr('r', 8);
-    }
+      // Add labels to each node
+      const label = node.append('text')
+        .attr('dx', 12)
+        .attr('dy', '0.35em')
+        .attr('font-size', (d) => d.influence * 1.5 > 9 ? d.influence * 1.5 : 9)
+        .text( (d) => d.character);
+      // Add circles to each node
+      const circle = node.append('circle')
+        .attr('r',  (d) => d.influence / 2 > 5 ? d.influence / 2 : 5)
+        .attr('fill',  (d) => c10(d.zone * 10));
+      // This function will be executed for every tick of force layout
+      force.on('tick',  () => {
+        // Set X and Y of node
+        node.attr('r',  (d) => d.influence)
+          .attr('cx', (d) => d.x)
+          .attr('cy', (d) => d.y);
+        // Set X, Y of link
+        link.attr('x1',  (d) => d.source.x);
+        link.attr('y1',  (d) => d.source.y);
+        link.attr('x2',  (d) => d.target.x);
+        link.attr('y2',  (d) => d.target.y);
+        // Shift node a little
+        node.attr('transform',  (d) => 'translate(' + d.x + ',' + d.y + ')');
+      });
+      // Start the force layout calculation
+      force.start();
+    });
   }
 }
