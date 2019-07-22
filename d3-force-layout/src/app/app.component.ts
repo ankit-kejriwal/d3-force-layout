@@ -12,12 +12,12 @@ export class AppComponent implements OnInit {
   ngOnInit() {
     const margin = {
       top: 20,
-      bottom: 50,
-      right: 30,
-      left: 50
+      bottom: 0,
+      right: 0,
+      left: 0
     };
-    const width = 960 - margin.left - margin.right;
-    const height = 700 - margin.top - margin.bottom;
+    const width = 1200 - margin.left - margin.right;
+    const height = 800 - margin.top - margin.bottom;
 
     // Load Color Scale
     const c10 = d3.scale.category10();
